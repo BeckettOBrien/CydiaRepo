@@ -1,19 +1,41 @@
 const express = require('express')
 const fileupload = require('express-fileupload')
+const cookieparser = require('cookie-parser')
+const bodyparser = require('body-parser')
 const shell = require('shelljs')
 const fs = require('fs')
+const bcrypt = require('bcrypt')
 const app = express()
-const port = 80
+
+// ---------------Adjust---------------
+const PORT = 80
+const PASSWORD = "PASSWORD"
+const REPO_TITLE = "Basic Repo"
+const COOKIE_SECRET = "SECRET-STRING"
+// ------------------------------------
 
 const static = express.static('static')
 app.use(fileupload())
+app.use(cookieparser(COOKIE_SECRET))
+app.use(bodyparser.urlencoded({ extended: false }))
+app.use(bodyparser.json())
+
+function hashPassword(password) {
+    const salt = bcrypt.genSaltSync(10)
+    const hash = bcrypt.hashSync(password, salt)
+    return hash
+}
 
 app.get('/', (req, res) => {
+    if (!req.signedCookies.password) return res.redirect('/auth')
+    if (!(bcrypt.compareSync(PASSWORD, req.signedCookies.password))) {
+        return res.redirect('/auth')
+    }
     const files = fs.readdirSync("./static/debs")
     const response = `<!DOCTYPE html>
     <html>
         <head>
-            <title>Basic Repo Management</title>
+            <title>${REPO_TITLE} Management</title>
         </head>
         <body>
             <p>Upload a package:</p>
@@ -33,24 +55,56 @@ app.get('/', (req, res) => {
     res.send(response)
 })
 
+app.get('/auth', (req, res) => {
+    if (req.signedCookies.password) {
+        if (bcrypt.compareSync(PASSWORD, req.signedCookies.password)) {
+            return res.redirect('/')
+        }
+    }
+    const response = `<!DOCTYPE html>
+    <html>
+        <head>
+            <title>${REPO_TITLE} Login</title>
+        </head>
+        <body>
+            <p>Please enter your password</p>
+            <form id="login" method="post" enctype="application/x-www-form-urlencode">
+                <input type="password" name="password">
+                <input type="submit" name="submit" value="Login" />
+            </form>
+        </body>
+    </html>`
+    res.send(response)
+})
+
+app.post('/auth', (req, res) => {
+    if (!req.body.password) return res.redirect('/auth')
+    if (bcrypt.compareSync(PASSWORD, hashPassword(req.body.password))) {
+        res.cookie("password", hashPassword(PASSWORD), { signed: true })
+        return res.redirect('/')
+    }
+    res.redirect('/auth')
+})
+
 app.post('/upload-package', async (req, res) => {
+    if (!req.signedCookies.password) return res.redirect('/auth')
+    if (!(bcrypt.compareSync(PASSWORD, req.signedCookies.password))) {
+        return res.redirect('/auth')
+    }
     if(!req.files) {
-        return res.send({
-            status: false,
-            message: 'No file uploaded'
-        });
+        return res.redirect('/');
     }
     let pacakge = req.files.deb;
-    res.send({
-        status: true,
-        message: "File uploaded"
-    })
     await pacakge.mv(`./static/debs/${pacakge.name}`)
     updatePackages()
     res.redirect('/')
 })
 
 app.post('/delete-package-*', async (req, res) => {
+    if (!req.signedCookies.password) return res.redirect('/auth')
+    if (!(bcrypt.compareSync(PASSWORD, req.signedCookies.password))) {
+        return res.redirect('/auth')
+    }
     const file = `./static/debs/${req.url.replace("/delete-package-", "")}`;
     console.log(req.url.replace("/delete-package-", ""))
     fs.unlinkSync(file)
@@ -60,8 +114,8 @@ app.post('/delete-package-*', async (req, res) => {
 // This goes last
 app.use(static)
 
-app.listen(port, () => {
-    console.log(`Listening on http://localhost:${port}`)
+app.listen(PORT, () => {
+    console.log(`Listening on http://localhost:${PORT}`)
 })
 
 function updatePackages() {

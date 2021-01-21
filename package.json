@@ -4,7 +4,10 @@
   "description": "Cydia Repository + Management Tools",
   "main": "server.js",
   "dependencies": {
+    "bcrypt": "^5.0.0",
+    "body-parser": "^1.19.0",
     "connect-busboy": "0.0.2",
+    "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
     "fs": "0.0.1-security",
