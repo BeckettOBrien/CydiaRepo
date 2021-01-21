@@ -114,7 +114,7 @@ app.post('/delete-package-*', async (req, res) => {
 // This goes last
 app.use(static)
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Listening on http://localhost:${PORT}`)
 })
 
