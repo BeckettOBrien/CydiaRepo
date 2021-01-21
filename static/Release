@@ -1,0 +1,8 @@
+Origin: Basic Repo Cydia Repo
+Label: Basic Repo
+Suite: stable
+Version: 1.0
+Codename: codename-here
+Architecture: iphoneos-arm
+Components: main
+Description: Description Here
