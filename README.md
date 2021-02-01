@@ -1,11 +1,12 @@
 # Cydia Repo Template
-A Cydia Repository with a simple web management interface
+A Cydia Repository template with a simple web management interface for non-static hosting
 
 ## Features:
 - Uploading Packages
 - Viewing Hosted Packages
 - Deleting Package
 - Password-based Authentication
+- Optional HTTPS
 
 ---
 ## Setup:
@@ -27,8 +28,8 @@ Make sure you have access to the `node` and `npm` commands
 If you want to run the the server with https:
 - Use something like `nginx` as a reverse-proxy (I recommend using `certbot` becuase it is really easy to instantly get an ssl certificate and redirect all http traffic to https)
 - Or you can follow theese instructions to setup https:
-1. Make a directory `ssl` and add `server.cert` and `server.key` (aqquiring the certificate is up to you, I recommend letsencrypt)
+1. Make a directory `ssl/` and add `server.cert` and `server.key` (aqquiring the certificate is up to you, I recommend letsencrypt)
 2. Set `SSL` to `true` in the `ADJUST` section
 
-
+---
 ### NOTE: Binding to port `80` may require root access. If you get an access denied error, make sure you are runnning the command with administrator privileges.
