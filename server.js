@@ -1,4 +1,5 @@
 const express = require('express')
+const https = require('https')
 const fileupload = require('express-fileupload')
 const cookieparser = require('cookie-parser')
 const bodyparser = require('body-parser')
@@ -9,9 +10,11 @@ const app = express()
 
 // ---------------Adjust---------------
 const PORT = 80
+const MANAGEMENT_ENDPOINT = "/management"
 const PASSWORD = "PASSWORD"
 const REPO_TITLE = "Basic Repo"
 const COOKIE_SECRET = "SECRET-STRING"
+const SSL = false
 // ------------------------------------
 
 const static = express.static('static')
@@ -27,11 +30,15 @@ function hashPassword(password) {
 }
 
 app.get('/', (req, res) => {
+    res.sendFile(`${__dirname}/index.html`)
+})
+
+app.get(MANAGEMENT_ENDPOINT, (req, res) => {
     if (!req.signedCookies.password) return res.redirect('/auth')
     if (!(bcrypt.compareSync(PASSWORD, req.signedCookies.password))) {
         return res.redirect('/auth')
     }
-    const files = fs.readdirSync("./static/debs")
+    const files = fs.readdirSync("./static/debs").filter((file) => { return !file.startsWith('.') })
     const response = `<!DOCTYPE html>
     <html>
         <head>
@@ -58,7 +65,7 @@ app.get('/', (req, res) => {
 app.get('/auth', (req, res) => {
     if (req.signedCookies.password) {
         if (bcrypt.compareSync(PASSWORD, req.signedCookies.password)) {
-            return res.redirect('/')
+            return res.redirect(MANAGEMENT_ENDPOINT)
         }
     }
     const response = `<!DOCTYPE html>
@@ -81,7 +88,7 @@ app.post('/auth', (req, res) => {
     if (!req.body.password) return res.redirect('/auth')
     if (bcrypt.compareSync(PASSWORD, hashPassword(req.body.password))) {
         res.cookie("password", hashPassword(PASSWORD), { signed: true })
-        return res.redirect('/')
+        return res.redirect(MANAGEMENT_ENDPOINT)
     }
     res.redirect('/auth')
 })
@@ -92,12 +99,12 @@ app.post('/upload-package', async (req, res) => {
         return res.redirect('/auth')
     }
     if(!req.files) {
-        return res.redirect('/');
+        return res.redirect(MANAGEMENT_ENDPOINT)
     }
     let pacakge = req.files.deb;
     await pacakge.mv(`./static/debs/${pacakge.name}`)
     updatePackages()
-    res.redirect('/')
+    res.redirect(MANAGEMENT_ENDPOINT)
 })
 
 app.post('/delete-package-*', async (req, res) => {
@@ -108,15 +115,23 @@ app.post('/delete-package-*', async (req, res) => {
     const file = `./static/debs/${req.url.replace("/delete-package-", "")}`;
     console.log(req.url.replace("/delete-package-", ""))
     fs.unlinkSync(file)
-    res.redirect('/')
+    res.redirect(MANAGEMENT_ENDPOINT)
 })
 
-// This goes last
 app.use(static)
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Listening on http://localhost:${PORT}`)
-})
+if (SSL) {
+    https.createServer({
+        key: fs.readFileSync('ssl/server.key'),
+        cert: fs.readFileSync('ssl/server.cert')
+    }, app).listen(PORT, "0.0.0.0", () => {
+        console.log(`Listening on https://localhost:${PORT}`)
+    })
+} else {
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Listening on http://localhost:${PORT}`)
+    })
+}
 
 function updatePackages() {
     shell.exec('./updatepackages.sh')
